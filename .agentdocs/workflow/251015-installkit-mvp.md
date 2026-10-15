@@ -1,0 +1,45 @@
+# 任务：InstallKit MVP 资源准备与检测
+
+- 创建日期：2026-10-15
+- 目标：先实现最小可用版本（MVP）——自动识别装机硬盘、建立目录、生成软件清单、检查安装包、计算 SHA-256、记录日志。第一阶段只准备资源，不自动修改系统。
+
+## 一、现状分析
+
+- 资源根目录现状：`d:\SUIwin1011` 下仅有 `readme.md`、`AGENTS.md` 与两个 Windows ISO，尚无 `InstallKit` 目录结构、配置文件与脚本。
+- 交付依据：`readme.md`（架构与脚本要求）、`.agentdocs/project/`（目录与清单规范）、`.agentdocs/decisions/`（根目录识别、模拟执行）。
+
+## 二、阶段与 TODO
+
+### 阶段 1：资源库骨架与清单（进行中）
+
+- [ ] 建立 `InstallKit` 目录结构与 `config` 子目录
+- [ ] 将两个 Windows ISO 归档至 `00_System\WindowsISO`
+- [ ] 生成 `software-manifest.json`、`driver-manifest.json`、`settings.json` 示例
+- [ ] 编写 `Check-System.ps1`、`Check-Network.ps1`（纯检测，无系统修改）
+- [ ] 编写资源准备脚本：建目录、扫描安装包、计算 SHA-256、写日志
+- [ ] 输出第一阶段「模拟执行」结果供用户确认
+
+### 阶段 2：运行库与工具安装（未开始）
+
+- [ ] `Install-Runtimes.ps1`：按清单安装 VC++、DirectX 旧组件、指定 .NET Runtime
+- [ ] `Install-Tools.ps1`：安装解压工具、浏览器等基础软件
+- [ ] 两脚本均默认 `-DryRun`，校验 SHA-256，记录退出码与重启提示
+
+### 阶段 3：驱动与环境初始化（未开始）
+
+- [ ] `Update-Drivers.ps1`：检测、匹配硬件 ID、下载并整理适用驱动，默认不覆盖
+- [ ] `Start-Setup.ps1`：统一入口，环境检查 → 权限检查 → 识别根目录 → 展示项 → 确认 → 顺序执行 → 出报告
+- [ ] 装机验收清单与报告模板落地
+
+## 三、关键设计约束
+
+- 根目录按标记文件 `config\settings.json` 识别，不写死盘符（见 ADR-001）。
+- 第一阶段不修改系统，安装类脚本默认模拟执行（见 ADR-002）。
+- 脚本遵守 `.agentdocs/rules/powershell-style.md`。
+
+## 四、验收标准
+
+- 目录结构与规范一致，清单可被脚本解析。
+- 检测脚本能在无网络、无网卡驱动的情况下给出明确提示与本地离线方案。
+- 同一脚本重复执行不产生重复安装或副作用。
+- 所有动作可从 `07_Logs` 与 `09_Reports` 追溯。
