@@ -1,0 +1,9 @@
+{
+  "library_root": "d:\\SUIwin1011\\InstallKit",
+  "download_cache": "08_DownloadCache",
+  "log_dir": "07_Logs",
+  "report_dir": "09_Reports",
+  "dry_run_default": true,
+  "log_retention_days": 90,
+  "target_arch": "x64"
+}

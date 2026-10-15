@@ -1,0 +1,4 @@
+时间,组件,级别,对象,结果,退出码,备注
+YYYY-MM-DD HH:mm:ss,InstallRuntimes,INFO,vcredist-2015-2022-x64,start,,开始安装
+YYYY-MM-DD HH:mm:ss,InstallRuntimes,SUCCESS,vcredist-2015-2022-x64,success,0,耗时 12s
+YYYY-MM-DD HH:mm:ss,InstallRuntimes,ERROR,directx-jun2010,hash-mismatch,,校验失败已拒绝安装
