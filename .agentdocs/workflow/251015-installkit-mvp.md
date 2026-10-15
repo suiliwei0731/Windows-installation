@@ -63,6 +63,22 @@
 - [x] `启动键盘鼠标测试.bat`：双击即用默认浏览器打开 HTML，无需管理员
 - [ ] 相机 / 声卡 / 扬声器 / 麦克风等其他硬件测试（待确认型号与测试逻辑后补充）
 
+### 阶段 7：索尼相机直播工具链（已完成）
+
+适用机型：Sony A6400 / A7C / ZV-E10 / A7M4（各机型差异占位待真机核对）。
+
+- [x] 目录 `05_Applications/CameraTools/` 落地：
+  - README.md 通用手册（USB Streaming 开关、OBS 捕捉设置、RTMP 推流、常见问题排查）
+  - A6400/ A7C/ ZV-E10/ A7M4/ 子目录各自 README 占位（真机核对菜单路径后补齐）
+  - CameraTest/index.html WebRTC 测试页：设备枚举 + 摄像头预览（fps/分辨率）+ 麦克风音量条 + 录音回放
+- [x] software-manifest.json 新增 2 项（install_order=70/71，`optional=false`）：
+  - `obs-studio-x64`：官方直播主程序，silent_args 待从官方 Inno Setup 参数确认
+  - `sony-imaging-edge-desktop`：**索尼 UVC 驱动载体**（非独立 .inf），驱动随 Imaging Edge Desktop 安装自动注入；silent_args 待补齐
+- [x] 两处 silent_args 留空已在 note 字段提醒：安装前查官方文档、安装后重启一次电脑、补齐 SHA-256
+- [ ] 4 个机型 README 真机核对：精确菜单位置、USB Streaming 分辨率上限、UVC 自带麦克风行为、已验证固件与 USB 线型号
+- [ ] OBS Studio + Sony Imaging Edge Desktop 下载到 `05_Applications/CameraTools/OBS/` 和 `SonyImagingEdge/` 并在 manifest 补齐 SHA-256（Initialize-InstallKit.ps1 -DryRun:$false 可自动回填）
+- [ ] 声卡 / 扬声器 / 麦克风 独立测试页（当前 CameraTest 已带麦克风音量条 + 录音回放，若需扬声器播放测试单独补）
+
 ## 三、关键设计约束
 
 - 根目录按标记文件 `config\settings.json` 识别，不写死盘符（见 ADR-001）。

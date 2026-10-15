@@ -22,7 +22,13 @@ InstallKit
 │   └── Diagnostics
 │       ├── SysinternalsSuite.zip        官方 Sysinternals（装机后自动解压到同级同名目录）
 │       └── KeyboardMouseTest\           键盘 / 鼠标 硬件测试（纯 HTML，双击 index.html 或 bat 启动）
-├── 05_Applications             其他应用
+├── 05_Applications
+│   └── CameraTools/                 索尼相机（A6400 / A7C / ZV-E10 / A7M4）直播相关
+│       ├── README.md                通用手册（USB Streaming 开启、OBS 推流设置）
+│       ├── A6400/ A7C/ ZV-E10/ A7M4/  机型差异占位（真机核对后补填）
+│       ├── CameraTest/              相机 + 麦克风 WebRTC 测试页（双击 bat 打开）
+│       ├── OBS/                     直播主程序（OBS Studio x64，官方 EXE）
+│       └── SonyImagingEdge/         索尼 UVC 驱动 + 远程控制（官方 EXE）
 ├── 06_Scripts                  全部 PowerShell 脚本与报告模板
 ├── 07_Logs                     运行日志
 ├── 08_DownloadCache            下载暂存

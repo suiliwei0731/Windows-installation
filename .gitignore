@@ -16,7 +16,7 @@
 /InstallKit/04_Tools/Browser/
 /InstallKit/04_Tools/Terminal/
 /InstallKit/04_Tools/Diagnostics/SysinternalsSuite.zip
-/InstallKit/05_Applications/
+# 05_Applications/CameraTools：README / 测试源码进仓库，二进制安装包由底部的 *.exe/*.msi/*.zip 规则统一忽略
 /InstallKit/07_Logs/
 /InstallKit/08_DownloadCache/
 /InstallKit/09_Reports/

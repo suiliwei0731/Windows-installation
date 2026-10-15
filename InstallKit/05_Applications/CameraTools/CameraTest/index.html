@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>索尼相机 / 麦克风 测试</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; margin: 0; padding: 16px; background: #f5f5f5; color: #222; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 14px; }
+  h2 { font-size: 16px; margin: 0 0 10px; padding-left: 8px; border-left: 4px solid #1677ff; }
+  section { margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 980px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  video { width: 100%; max-width: 520px; background: #000; border-radius: 6px; border: 1px solid #ccc; }
+  .ctrl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  label { font-size: 13px; color: #444; }
+  select, button { padding: 6px 10px; font-size: 14px; border: 1px solid #bbb; border-radius: 4px; background: #fff; cursor: pointer; }
+  button:hover { background: #eee; }
+  button.primary { background: #1677ff; color: #fff; border-color: #1677ff; }
+  button.primary:hover { background: #0e60d9; }
+  button.danger  { background: #dc2626; color: #fff; border-color: #dc2626; }
+  button.danger:hover { background: #b91c1c; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .meta { font-size: 12px; color: #555; margin-top: 4px; }
+  .meta b { color: #111; }
+  .volbox { border: 1px solid #ccc; border-radius: 4px; height: 22px; position: relative; background: #fff; }
+  .vol { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: linear-gradient(90deg, #22c55e, #eab308, #ef4444); transition: width .05s linear; }
+  .vol-num { position: absolute; right: 6px; top: 2px; font-size: 11px; color: #333; }
+  .hint { padding: 10px; background: #fff; border: 1px solid #e5e5e5; border-radius: 6px; font-size: 13px; line-height: 1.6; }
+  .hint code { background: #f0f0f0; padding: 0 4px; border-radius: 3px; }
+  .legend { display: flex; gap: 14px; font-size: 13px; color: #444; margin-bottom: 10px; flex-wrap: wrap; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+  .badge-ok { background: #dcfce7; color: #15803d; }
+  .badge-fail { background: #fee2e2; color: #b91c1c; }
+</style>
+</head>
+<body>
+
+<h1>索尼相机 / 麦克风 测试（UVC）</h1>
+<div class="sub">本页通过浏览器 WebRTC API 直接调用系统 UVC 设备，验证 Sony Imaging Edge / USB Streaming 是否正常工作。<br>
+<b>首次使用必须授予浏览器摄像头和麦克风权限</b>。拒绝后请在地址栏左侧🔒图标手动允许。</div>
+
+<section>
+<h2>1. 检查清单</h2>
+<div class="hint">
+  <b>相机端：</b>① USB-C 连电脑（原装数据+供电线优先）② 相机菜单 → USB Connection 选 <code>PC Remote Function</code> 或 <code>USB Streaming</code> 或 <code>MTP Transfer</code>（不要选 Mass Storage）③ 切到 <b>视频模式</b> ④ 相机开机。<br>
+  <b>电脑端：</b>① Sony Imaging Edge Desktop 已安装 ② 重启过电脑 ③ 点"请求权限并列出设备"后，下拉里应能看到索尼相机。
+</div>
+<div class="ctrl" style="margin-top:10px">
+  <button class="primary" id="btnEnum" onclick="enumDevices()">① 请求权限并列出设备</button>
+  <span class="legend">
+    摄像头：<select id="camSel" style="min-width:260px" onchange="previewStop(); previewStart()"></select>
+    麦克风：<select id="micSel" style="min-width:260px" onchange="previewStop(); previewStart()"></select>
+  </span>
+</div>
+</section>
+
+<section>
+<h2>2. 摄像头预览</h2>
+<div class="grid">
+  <div>
+    <video id="video" playsinline muted></video>
+    <div class="ctrl" style="margin-top:8px">
+      <button class="primary" id="btnStart" onclick="previewStart()">开始预览</button>
+      <button class="danger" id="btnStop"  onclick="previewStop()" disabled>停止预览</button>
+      <button onclick="snapshot()" id="btnSnap" disabled>截图保存</button>
+    </div>
+    <div class="meta" id="camMeta">— 点"开始预览" —</div>
+  </div>
+  <div>
+    <div class="ctrl">
+      麦克风音量：
+    </div>
+    <div class="volbox"><div class="vol" id="vol"></div><div class="vol-num" id="volNum">0</div></div>
+    <div class="meta" style="margin-top:6px">对着镜头说话或拍手，音量条应实时跳动。完全静止时音量接近 0；噪声大时会顶满。</div>
+  </div>
+</div>
+</section>
+
+<section>
+<h2>3. 麦克风录音 + 回放</h2>
+<div class="ctrl">
+  <button class="primary" id="btnRec" onclick="recToggle()">开始录音</button>
+  <button onclick="recDownload()" id="btnDownload" disabled>下载录音 .webm</button>
+</div>
+<div class="meta" id="recStatus">— 录音 5 秒再停止 —</div>
+<audio id="audio" controls style="margin-top:8px;width:100%;max-width:520px" disabled></audio>
+</section>
+
+<script>
+/* ======== 状态 ======== */
+let videoStream = null, micStream = null, audioCtx = null, analyser = null, volSrc = null, rafId = null;
+let mediaRecorder = null, recChunks = [], recording = false;
+let frameCount = 0, fpsStart = 0, fps = 0;
+
+/* ======== 1. 枚举设备 ======== */
+async function enumDevices() {
+  const btn = document.getElementById('btnEnum');
+  btn.disabled = true; btn.textContent = '枚举中...';
+  try {
+    // 先获取一次媒体流才能拿到真实 deviceId（浏览器隐私策略）
+    const tempCam = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    tempCam.getTracks().forEach(t => t.stop());
+
+    const cams = devs.filter(d => d.kind === 'videoinput');
+    const mics = devs.filter(d => d.kind === 'audioinput');
+    fillSelect('camSel', cams);
+    fillSelect('micSel', mics);
+    btn.textContent = `设备已就绪（摄像头 ${cams.length} / 麦克风 ${mics.length}）`;
+    btn.disabled = false;
+
+    // 检测：下拉里有没有索尼相关设备（名字包含 "Sony" 或 "SONY"）
+    const hasSonyCam  = cams.some(c => /sony/i.test(c.label));
+    const hasSonyMic  = mics.some(c => /sony/i.test(c.label));
+    const badgeCam = `<span class="badge ${hasSonyCam?'badge-ok':'badge-fail'}">${hasSonyCam?'已识别索尼相机':'未识别到索尼相机'}</span>`;
+    const badgeMic = `<span class="badge ${hasSonyMic?'badge-ok':'badge-fail'}">${hasSonyMic?'已识别索尼麦':'未识别到索尼麦'}</span>`;
+    document.getElementById('camSel').insertAdjacentHTML('beforebegin', badgeCam);
+    // 检查是否只有默认 / label 为空（权限没给到设备级标签）
+    const camSel = document.getElementById('camSel');
+    if (cams.length && cams[0].label === '' && camSel.options[0].textContent.trim() === '未识别标签') {
+      alert('浏览器没拿到设备友好标签（权限只给了基础级）。Chrome 地址栏🔒→ 网站设置 → 摄像头/麦克风权限 = 允许并"允许时显示设备选择"。');
+    }
+  } catch (e) {
+    btn.textContent = '权限被拒绝';
+    btn.disabled = false;
+    alert('权限被拒绝或浏览器不支持。错误：' + e.message);
+  }
+}
+function fillSelect(id, devices) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = '';
+  devices.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.deviceId;
+    opt.textContent = d.label || '未识别标签 (' + (d.kind === 'videoinput' ? '摄像头' : '麦克风') + ')';
+    sel.appendChild(opt);
+  });
+}
+
+/* ======== 2. 摄像头预览 + 麦克风音量条 ======== */
+async function previewStart() {
+  const camId = document.getElementById('camSel').value;
+  const micId = document.getElementById('micSel').value;
+  if (!camId && !micId) { alert('先点"请求权限并列出设备"'); return; }
+
+  const videoEl = document.getElementById('video');
+  const meta = document.getElementById('camMeta');
+  const btnStart = document.getElementById('btnStart'), btnStop = document.getElementById('btnStop'), btnSnap = document.getElementById('btnSnap');
+  btnStart.disabled = true;
+
+  try {
+    videoStream = camId ? await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: camId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    }) : null;
+    micStream = micId ? await navigator.mediaDevices.getUserMedia({
+      audio: { deviceId: { exact: micId } }
+    }) : null;
+  } catch (e) {
+    alert('打开流失败：' + e.message + '\n（如果摄像头下拉能选但打开报错，说明 Sony Imaging Edge 驱动没装好或相机没切到视频模式）');
+    btnStart.disabled = false;
+    return;
+  }
+
+  if (videoStream) { videoEl.srcObject = videoStream; videoEl.play(); }
+  btnStop.disabled = false; btnSnap.disabled = !videoStream;
+
+  // 视频 meta：fps / 分辨率
+  frameCount = 0; fpsStart = performance.now();
+  function tick() {
+    frameCount++;
+    const now = performance.now();
+    if (now - fpsStart >= 1000) {
+      fps = Math.round(frameCount * 1000 / (now - fpsStart));
+      frameCount = 0; fpsStart = now;
+      if (videoStream) {
+        const track = videoStream.getVideoTracks()[0];
+        const settings = track.getSettings();
+        meta.innerHTML = `<b>分辨率 ${settings.width}×${settings.height} @ ${fps} fps</b>（${track.label}）`;
+      } else {
+        meta.innerHTML = `<b>无视频</b>`;
+      }
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+  rafId = requestAnimationFrame(tick);
+
+  // 麦克风音量条（挂到 micStream，没有就挂 videoStream 的音轨）
+  const audioTrack = (micStream || (videoStream && videoStream.getAudioTracks().length ? videoStream : null));
+  if (audioTrack) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    const src = audioCtx.createMediaStreamSource(micStream || videoStream);
+    src.connect(analyser);
+    volSrc = src;
+    function volLoop() {
+      const data = new Uint8Array(analyser.fftSize);
+      analyser.getByteTimeDomainData(data);
+      let sum = 0;
+      for (const b of data) { const v = (b - 128) / 128; sum += v * v; }
+      const rms = Math.sqrt(sum / data.length);                 // 0 ~ 1
+      const pct = Math.min(100, Math.round(rms * 300));         // 放大系数，让安静环境也有反应
+      document.getElementById('vol').style.width = pct + '%';
+      document.getElementById('volNum').textContent = pct + '%';
+      requestAnimationFrame(volLoop);
+    }
+    volLoop();
+  }
+}
+
+function previewStop() {
+  if (rafId) cancelAnimationFrame(rafId); rafId = null;
+  [videoStream, micStream].forEach(s => s && s.getTracks().forEach(t => t.stop()));
+  videoStream = null; micStream = null;
+  document.getElementById('video').srcObject = null;
+  document.getElementById('vol').style.width = '0%';
+  document.getElementById('volNum').textContent = '0';
+  if (audioCtx) { try { audioCtx.close(); } catch {} audioCtx = null; analyser = null; }
+  document.getElementById('camMeta').textContent = '— 已停止 —';
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('btnSnap').disabled = true;
+}
+
+function snapshot() {
+  if (!videoStream) return;
+  const video = document.getElementById('video');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.toBlob(b => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = 'camera-snap-' + new Date().toISOString().replace(/[:.]/g,'-') + '.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }, 'image/png');
+}
+
+/* ======== 3. 录音 ======== */
+function recToggle() {
+  const btn = document.getElementById('btnRec');
+  const status = document.getElementById('recStatus');
+  if (!recording) {
+    // 用视频流或 micStream 里已有的音频轨开录
+    const srcStream = micStream || videoStream;
+    if (!srcStream) { alert('请先"开始预览"有音轨才能录'); return; }
+    recChunks = [];
+    try {
+      mediaRecorder = new MediaRecorder(srcStream, { mimeType: 'audio/webm' });
+    } catch (e) { alert('浏览器不支持 MediaRecorder：' + e.message); return; }
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recChunks, { type: 'audio/webm' });
+      const url = URL.createObjectURL(blob);
+      document.getElementById('audio').src = url;
+      document.getElementById('audio').disabled = false;
+      document.getElementById('btnDownload').disabled = false;
+      status.textContent = `已录 ${Math.round((blob.size)/1024)} KB`;
+      btn.textContent = '开始录音';
+      btn.classList.remove('danger');
+      recording = false;
+    };
+    mediaRecorder.start();
+    recording = true;
+    btn.textContent = '停止录音';
+    btn.classList.add('danger');
+    status.textContent = '录音中... 停止后会自动回放到浏览器';
+  } else {
+    mediaRecorder.stop();
+  }
+}
+function recDownload() {
+  const url = document.getElementById('audio').src;
+  if (!url) return;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mic-rec-' + new Date().toISOString().replace(/[:.]/g,'-') + '.webm';
+  a.click();
+}
+</script>
+</body>
+</html>
