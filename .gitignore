@@ -11,7 +11,11 @@
 /InstallKit/01_Network/
 /InstallKit/02_Drivers/
 /InstallKit/03_Runtime/
-/InstallKit/04_Tools/
+# 04_Tools 不再整体忽略：HTML/bat 这类源码文件要进仓库，二进制由扩展名规则覆盖
+/InstallKit/04_Tools/Archive/
+/InstallKit/04_Tools/Browser/
+/InstallKit/04_Tools/Terminal/
+/InstallKit/04_Tools/Diagnostics/SysinternalsSuite.zip
 /InstallKit/05_Applications/
 /InstallKit/07_Logs/
 /InstallKit/08_DownloadCache/

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>键盘 / 鼠标 硬件测试</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; margin: 0; padding: 16px; background: #f5f5f5; color: #222; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 14px; }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  button { padding: 6px 14px; font-size: 14px; border: 1px solid #bbb; border-radius: 4px; background: #fff; cursor: pointer; }
+  button:hover { background: #eee; }
+  button.primary { background: #1677ff; color: #fff; border-color: #1677ff; }
+  button.primary:hover { background: #0e60d9; }
+  .counter { font-weight: 600; }
+  .legend { display: flex; gap: 12px; font-size: 13px; color: #444; }
+  .legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.15); }
+  section { margin-bottom: 18px; }
+  h2 { font-size: 16px; margin: 0 0 10px; padding-left: 8px; border-left: 4px solid #1677ff; }
+
+  /* 键盘网格 */
+  .kb { display: grid; gap: 4px; max-width: 900px; }
+  .kb .row { display: flex; gap: 4px; }
+  .k { min-width: 42px; height: 40px; padding: 0 8px; display: flex; align-items: center; justify-content: center;
+       border: 1px solid #bbb; border-radius: 5px; background: #e0e0e0; font-size: 12px;
+       user-select: none; transition: background .08s ease; font-weight: 500; }
+  .k.wide1 { min-width: 56px; }
+  .k.wide2 { min-width: 76px; }
+  .k.wide3 { min-width: 104px; }
+  .k.wide4 { min-width: 160px; }
+  .k.flex { flex: 1; }
+
+  /* 颜色状态：0=灰 1=红 2=黄 3=绿 */
+  .s0 { background: #e0e0e0; }
+  .s1 { background: #ef4444; color: #fff; }
+  .s2 { background: #eab308; color: #fff; }
+  .s3 { background: #22c55e; color: #fff; }
+
+  /* 鼠标测试区 */
+  .mouse-box { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-width: 700px; }
+  .m-test { height: 100px; border: 2px dashed #aaa; border-radius: 10px;
+             display: flex; align-items: center; justify-content: center;
+             font-size: 15px; font-weight: 600; cursor: pointer; user-select: none; }
+  .m-test:hover { border-color: #1677ff; }
+  .wheel-zone { height: 120px; }
+</style>
+</head>
+<body>
+
+<h1>键盘 / 鼠标 硬件测试</h1>
+<div class="sub">依次按下每个按键或鼠标按钮 <b>3 次</b> 即通过（1次=红、2次=黄、3次=绿）。<br>
+<b>开始测试前请先点击下方任意区域聚焦窗口</b>，否则按键事件不会被捕获。</div>
+
+<div class="bar">
+  <button class="primary" onclick="startTest()">开始测试</button>
+  <button onclick="resetAll()">重置</button>
+  <button onclick="finishTest()">完成并统计</button>
+  <span class="counter">通过 <span id="passCount">0</span> / <span id="totalCount">0</span>　|　状态 <span id="statusText">待测试</span></span>
+</div>
+
+<div class="legend">
+  <span><span class="sw" style="background:#e0e0e0"></span> 未按过</span>
+  <span><span class="sw" style="background:#ef4444"></span> 1 次</span>
+  <span><span class="sw" style="background:#eab308"></span> 2 次</span>
+  <span><span class="sw" style="background:#22c55e"></span> 3 次通过</span>
+</div>
+
+<section>
+<h2>键盘</h2>
+<div class="kb" id="kbGrid"></div>
+</section>
+
+<section>
+<h2>鼠标</h2>
+<div class="mouse-box">
+  <div class="m-test" id="mL"    onmousedown="mouseCount('mL',1,event)">左键</div>
+  <div class="m-test" id="mM"    onmousedown="mouseCount('mM',1,event)">中键</div>
+  <div class="m-test" id="mR"    onmousedown="mouseCount('mR',2,event); return false;">右键（已禁用菜单）</div>
+  <div class="m-test wheel-zone" id="mWheel" onwheel="wheelCount(event)">在此区域滚动滚轮</div>
+</div>
+</section>
+
+<script>
+/* ======== 键盘布局 ======== */
+const KEYBOARD = [
+  // 行 1
+  ['Esc','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'],
+  // 行 2
+  ['`','1','2','3','4','5','6','7','8','9','0','-','=','Backspace'],
+  // 行 3
+  ['Tab','Q','W','E','R','T','Y','U','I','O','P','[',']','\\'],
+  // 行 4
+  ['CapsLock','A','S','D','F','G','H','J','K','L',';',"'",'Enter'],
+  // 行 5
+  ['Shift','Z','X','C','V','B','N','M',',','.','/','Shift'],
+  // 行 6
+  ['Ctrl','Win','Alt','Space','Alt','Win','Menu','Ctrl'],
+  // 方向 + 编辑
+  [null,'PrintScreen','ScrollLock','Pause'],
+  [null,'Insert','Home','PageUp'],
+  [null,'Delete','End','PageDown'],
+  [null,null,'Up'],
+  ['Left','Down','Right']
+];
+
+/* 按键 DOM code 映射，用 KeyboardEvent.code 取值。
+   同一物理键按下时始终返回相同 code（不区分大小写/当前输入法）。
+   每个键的容器 id 取 code 名，方便查找。 */
+const CODE_MAP = {
+  'Backquote':'`','Digit1':'1','Digit2':'2','Digit3':'3','Digit4':'4','Digit5':'5','Digit6':'6',
+  'Digit7':'7','Digit8':'8','Digit9':'9','Digit0':'0','Minus':'-','Equal':'=',
+  'BracketLeft':'[','BracketRight':']','Backslash':'\\','Semicolon':';','Quote':"'",
+  'Comma':',','Period':'.','Slash':'/','Space':'Space','Enter':'Enter','Tab':'Tab',
+  'Backspace':'Backspace','CapsLock':'CapsLock','ShiftLeft':'Shift','ShiftRight':'Shift',
+  'ControlLeft':'Ctrl','ControlRight':'Ctrl','AltLeft':'Alt','AltRight':'Alt',
+  'MetaLeft':'Win','MetaRight':'Win','ContextMenu':'Menu','Escape':'Esc',
+  'KeyA':'A','KeyB':'B','KeyC':'C','KeyD':'D','KeyE':'E','KeyF':'F','KeyG':'G',
+  'KeyH':'H','KeyI':'I','KeyJ':'J','KeyK':'K','KeyL':'L','KeyM':'M','KeyN':'N',
+  'KeyO':'O','KeyP':'P','KeyQ':'Q','KeyR':'R','KeyS':'S','KeyT':'T','KeyU':'U',
+  'KeyV':'V','KeyW':'W','KeyX':'X','KeyY':'Y','KeyZ':'Z',
+  'F1':'F1','F2':'F2','F3':'F3','F4':'F4','F5':'F5','F6':'F6','F7':'F7','F8':'F8',
+  'F9':'F9','F10':'F10','F11':'F11','F12':'F12','PrintScreen':'PrintScreen',
+  'ScrollLock':'ScrollLock','Pause':'Pause','Insert':'Insert','Home':'Home',
+  'PageUp':'PageUp','Delete':'Delete','End':'End','PageDown':'PageDown','ArrowUp':'Up',
+  'ArrowDown':'Down','ArrowLeft':'Left','ArrowRight':'Right'
+};
+
+/* 同一行上多个 Shift/Ctrl 等键要区分左/右 */
+const SIDE_MAP = {
+  'Shift':'ShiftLeft','ShiftLeft':'ShiftLeft','ShiftRight':'ShiftRight',
+  'Ctrl':'ControlLeft','CtrlLeft':'ControlLeft','CtrlRight':'ControlRight',
+  'Alt':'AltLeft','AltLeft':'AltLeft','AltRight':'AltRight',
+  'Win':'MetaLeft','MetaLeft':'MetaLeft','MetaRight':'MetaRight'
+};
+
+/* ======== 状态 ======== */
+const counts = {};      // { elementId: int }
+let testing = false;
+
+function idOf(label, idxInRow, rowIdx) {
+  // 根据标签决定 code；Shift/Ctrl/Alt/Win 同行出现两次时用 idxInRow 区分
+  let code = null;
+  for (const [c, l] of Object.entries(CODE_MAP)) if (l === label) { code = c; break; }
+  if (!code) return 'none';
+  // 修饰键同行重复出现：第一次=Left，第二次=Right
+  if (['Shift','Ctrl','Alt','Win'].includes(label)) {
+    const sameRow = KEYBOARD[rowIdx].filter(x => x === label);
+    const order = sameRow.indexOf(label);
+    if (label === 'Shift') code = order === 0 ? 'ShiftLeft' : 'ShiftRight';
+    else if (label === 'Ctrl') code = order === 0 ? 'ControlLeft' : 'ControlRight';
+    else if (label === 'Alt') code = order === 0 ? 'AltLeft' : 'AltRight';
+    else if (label === 'Win') code = order === 0 ? 'MetaLeft' : 'MetaRight';
+  }
+  return code;
+}
+
+function initKeyboard() {
+  const grid = document.getElementById('kbGrid');
+  KEYBOARD.forEach((row, ri) => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'row';
+    row.forEach((label, li) => {
+      if (label === null) {
+        const blank = document.createElement('div');
+        blank.style.minWidth = '16px';
+        rowEl.appendChild(blank);
+        return;
+      }
+      const code = idOf(label, li, ri);
+      if (code === 'none') return;
+      const el = document.createElement('div');
+      el.className = 'k s0';
+      el.id = code;
+      el.textContent = label;
+      // 空格特殊加宽
+      if (label === 'Space') el.classList.add('flex');
+      else if (label === 'Backspace' || label === 'Tab') el.classList.add('wide3');
+      else if (label === 'CapsLock' || label === 'Enter') el.classList.add('wide2');
+      counts[code] = 0;
+      rowEl.appendChild(el);
+    });
+    grid.appendChild(rowEl);
+  });
+  // 鼠标
+  counts['mL'] = counts['mM'] = counts['mR'] = counts['mWheel'] = 0;
+}
+
+function setState(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const c = Math.min(counts[elId], 3);
+  // 只替换颜色类 s0/s1/s2/s3，保留元素原有的布局/边框类
+  el.classList.remove('s0','s1','s2','s3');
+  el.classList.add('s' + c);
+}
+
+function bump(elId) {
+  counts[elId] = Math.min(3, counts[elId] + 1);
+  setState(elId);
+  updateSummary();
+}
+
+/* ======== 键盘事件 ======== */
+document.addEventListener('keydown', (e) => {
+  if (!testing) return;
+  const code = e.code;
+  // keyCode deprecated 但仍有浏览器兼容；用 code 作为主路径
+  if (counts.hasOwnProperty(code)) {
+    e.preventDefault();
+    bump(code);
+  }
+});
+
+/* ======== 鼠标事件 ======== */
+function mouseCount(which, button, ev) {
+  ev.preventDefault();
+  if (!testing) return;
+  if (button !== ev.button) return;  // 防止左键误触发了右键按钮区
+  bump(which);
+}
+function wheelCount(ev) {
+  if (!testing) return;
+  ev.preventDefault();
+  if (ev.deltaY !== 0) bump('mWheel');
+}
+// 全局禁用右键菜单（只在测试期间）
+document.addEventListener('contextmenu', e => { if (testing) e.preventDefault(); });
+
+/* ======== 控制按钮 ======== */
+function startTest() {
+  if (testing) return;
+  testing = true;
+  document.getElementById('statusText').textContent = '测试中';
+  document.body.style.outline = 'none';
+  document.title = '[测试中] 键盘鼠标测试';
+  // 自动聚焦到页面内，否则系统键不会被捕获
+  document.body.tabIndex = 0;
+  document.body.focus();
+}
+function resetAll() {
+  for (const k in counts) { counts[k] = 0; setState(k); }
+  updateSummary();
+  testing = false;
+  document.getElementById('statusText').textContent = '待测试';
+  document.title = '键盘 / 鼠标 硬件测试';
+}
+function finishTest() {
+  testing = false;
+  let pass = 0, total = 0;
+  for (const k in counts) { total++; if (counts[k] >= 3) pass++; }
+  document.getElementById('statusText').textContent = pass === total ? '全部通过' : (pass === 0 ? '全部未测' : '部分通过');
+  document.title = `[${pass}/${total}] 键盘鼠标测试`;
+  alert(`测试结束：${pass} / ${total} 通过\n（达到 3 次触发即算通过）`);
+}
+function updateSummary() {
+  let pass = 0, total = 0;
+  for (const k in counts) { total++; if (counts[k] >= 3) pass++; }
+  document.getElementById('passCount').textContent = pass;
+  document.getElementById('totalCount').textContent = total;
+}
+
+/* 鼠标容器初始样式（m-test 类）—— setState 里要保留它的 dashed 边框 */
+const origInit = initKeyboard;
+initKeyboard();
+updateSummary();
+</script>
+</body>
+</html>
