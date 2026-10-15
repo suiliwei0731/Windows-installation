@@ -47,6 +47,14 @@ if ($problemDevices.Count) {
 $manifest = Get-KitManifest -Root $Root -Name 'driver'
 $matched = @()
 foreach ($entry in $manifest) {
+    # 模板条目（版本/校验值/官方地址均未配置）不参与匹配，避免输出误导性信息
+    if ([string]::IsNullOrWhiteSpace($entry.version) -and [string]::IsNullOrWhiteSpace($entry.sha256) -and [string]::IsNullOrWhiteSpace($entry.official_url)) {
+        $matched += [pscustomobject]@{
+            Id = $entry.id; Name = $entry.name; DeviceType = $entry.device_type
+            MatchedDevice = '（模板，未配置）'; PackageExists = $false; Signature = 'n/a'; RiskLevel = $entry.risk_level
+        }
+        continue
+    }
     $device = $null
     if ($entry.hardware_ids -and $entry.hardware_ids.Count) {
         $device = $problemDevices | Where-Object {
@@ -120,6 +128,10 @@ if ($Install) {
                 if ($proc.ExitCode -in 0, 3010) {
                     Write-KitLog -Root $Root -Component $component -Level SUCCESS -Message "网卡驱动安装成功：$($inf.Name)，退出码 $($proc.ExitCode)"
                     $driverResults += [pscustomobject]@{ Inf = $inf.Name; Result = 'success' }
+                } elseif ($proc.ExitCode -eq 259) {
+                    # 259：驱动包已在驱动存储中或无需更新，视为已完成（重复执行时不误报失败）
+                    Write-KitLog -Root $Root -Component $component -Level SUCCESS -Message "网卡驱动已存在/无需更新：$($inf.Name)，退出码 259"
+                    $driverResults += [pscustomobject]@{ Inf = $inf.Name; Result = 'already-installed' }
                 } else {
                     Write-KitLog -Root $Root -Component $component -Level ERROR -Message "网卡驱动安装失败：$($inf.Name)，退出码 $($proc.ExitCode)"
                     $driverResults += [pscustomobject]@{ Inf = $inf.Name; Result = 'failed' }
