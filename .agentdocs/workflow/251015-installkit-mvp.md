@@ -36,9 +36,12 @@
 ### 阶段 4：一键启动器与离线网卡驱动安装（已完成）
 
 - [x] `Start-Setup.bat`（项目根目录）：UAC 提权 → 资源齐全性检查 → 确认 → 顺序安装
-- [x] `Update-Drivers.ps1` 增加 `-Install`：用系统自带 `pnputil` 安装 `01_Network` 下的 `.inf` 离线网卡驱动
+- [x] `Update-Drivers.ps1` 增加 `-Install`：用系统自带 `pnputil` 安装 `01_Network` 下的离线网卡驱动
+  （`pnputil /add-driver` 退出码 259=已存在/无需更新，视为成功；重复执行不误报失败）
 - [x] `Start-Setup.ps1` 增加 `-InstallDrivers`，保持「前一个装完再装下一个」的顺序执行
 - [x] 修复 DirectX 自解压静默安装：`extract_args`/`inner_exe`/`inner_args`（先解压再执行 `DXSETUP.exe /silent`）
+- [x] ZIP 条目真实解压：Sysinternals Suite 等免安装包解压到 ZIP 同级同名目录，DryRun 输出目标路径
+- [x] `Initialize-InstallKit.ps1` 末尾加 exit 1：关键包（`optional=false`）缺失/校验失败时中止，bat 的 `if errorlevel 1` 真正生效
 - [x] 全部脚本语法校验 + 全流程 DryRun 干跑通过（无系统变更）
 - [ ] 目标机实机执行（需用户先将官方网卡驱动放入 `01_Network`）
 

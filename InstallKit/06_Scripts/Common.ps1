@@ -237,8 +237,23 @@ function Install-KitItem {
     }
 
     if ($Item.installer_type -eq 'ZIP') {
-        Write-KitLog -Root $Root -Component $Component -Message "免安装（解压即用）：$($Item.id)"
-        $result.Action = 'skip'; $result.ExitCode = 0; $result.Result = 'no-installer'
+        # 免安装包解压到 ZIP 同级目录下（文件同名去掉扩展名），开箱即用
+        $zipItem = Get-Item -LiteralPath $full
+        $destDir = Join-Path $zipItem.DirectoryName ([System.IO.Path]::GetFileNameWithoutExtension($zipItem.Name))
+        if ($DryRun) {
+            Write-KitLog -Root $Root -Component $Component -Message ("[模拟] 将解压 ZIP 到：{0}" -f $destDir)
+            $result.Action = 'dry-run'; $result.Result = 'simulated'; return $result
+        }
+        try {
+            New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+            Expand-Archive -LiteralPath $full -DestinationPath $destDir -Force
+            $fileCount = (Get-ChildItem -LiteralPath $destDir -Recurse -File | Measure-Object).Count
+            Write-KitLog -Root $Root -Component $Component -Level SUCCESS -Message "解压成功：$($Item.id) -> $destDir（共 $fileCount 个文件）"
+            $result.Action = 'extract'; $result.ExitCode = 0; $result.Result = 'success'
+        } catch {
+            Write-KitLog -Root $Root -Component $Component -Level ERROR -Message "解压失败：$($Item.id)，$($_.Exception.Message)"
+            $result.Action = 'extract'; $result.Result = 'error'
+        }
         return $result
     }
 

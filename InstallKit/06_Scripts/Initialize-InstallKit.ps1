@@ -134,6 +134,17 @@ foreach ($r in $results) {
     $reportLines += "| $($r.Id) | $($r.Name) | $($r.Exists) | $($r.Sha256) | $($r.Status) |"
 }
 
+# 关键包缺失/校验失败 → 以 exit 1 返回，让调用方（如 Start-Setup.bat）识别并中止
+# （optional 包缺失只 WARN，不视为致命错误）
+$criticalIssues = 0
+foreach ($item in $items) {
+    if (-not $item.optional -and ($results | Where-Object Id -eq $item.id).Status -ne 'verified') { $criticalIssues++ }
+}
+if ($criticalIssues -gt 0) {
+    Write-KitLog -Root $Root -Component $component -Level ERROR -Message "存在 $criticalIssues 个关键包缺失或校验失败，请补齐后再执行安装。"
+    exit 1
+}
+
 if ($isDryRun) {
     Write-Host ""
     Write-Host "（模拟执行）以下报告未写入文件，实际执行时将保存至 09_Reports：" -ForegroundColor Cyan
