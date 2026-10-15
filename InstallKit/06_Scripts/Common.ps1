@@ -130,6 +130,43 @@ function Test-KitAdmin {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function Get-KitOsInfo {
+    <#
+    .SYNOPSIS
+      返回当前系统的版本信息：Version（字符串，如 "10.0.19045"）、Major 名称（"Windows 10"/"Windows 11"）、
+      Build、DisplayName、Ubr。Win10 22H2 是 19045，Win11 22H2 是 22621，Win11 24H2 是 26100。
+    #>
+    [CmdletBinding()]
+    param()
+
+    $os = Get-CimInstance -ClassName Win32_OperatingSystem
+    $cu = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -ErrorAction SilentlyContinue
+    $major = [int]$os.Version.Split('.')[0]
+    $minor = [int]$os.Version.Split('.')[1]
+    $build = [int]$os.BuildNumber
+    # 版本字符串统一为 "major.minor.build"，与清单 min_os_version 对齐
+    $versionStr = "$major.$minor.$build"
+    $displayName = if ($major -eq 10 -and $build -ge 22000) { 'Windows 11' } elseif ($major -eq 10) { 'Windows 10' } else { $os.Caption }
+    return [pscustomobject]@{
+        Version = $versionStr; MajorName = $displayName; Build = $build
+        DisplayVersion = $cu.DisplayVersion; Ubr = $cu.UBR; Caption = $os.Caption
+    }
+}
+
+function Test-KitOsCompatible {
+    <#
+    .SYNOPSIS
+      判断当前系统是否满足清单条目的最低 OS 版本要求；清单未填 min_os_version 时默认兼容。
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$OsInfo,
+        [Parameter(Mandatory)]$Item
+    )
+    if ([string]::IsNullOrWhiteSpace($Item.min_os_version)) { return $true }
+    return ([version]$OsInfo.Version) -ge ([version]$Item.min_os_version)
+}
+
 function Get-KitSha256 {
     <#
     .SYNOPSIS
@@ -217,6 +254,14 @@ function Install-KitItem {
     if ($Item.status -eq 'installed' -and -not $Force) {
         Write-KitLog -Root $Root -Component $Component -Message "跳过（已安装）：$($Item.id)"
         $result.Action = 'skip'; $result.ExitCode = 0; $result.Result = 'already-installed'
+        return $result
+    }
+
+    # 操作系统兼容性：低于清单 min_os_version 的条目跳过（清单未填则默认兼容）
+    $osInfo = Get-KitOsInfo
+    if (-not (Test-KitOsCompatible -OsInfo $osInfo -Item $Item)) {
+        Write-KitLog -Root $Root -Component $Component -Level WARN -Message "跳过（OS 不兼容）：$($Item.id) 需要最低 $($Item.min_os_version)，当前 $($osInfo.Version) ($($osInfo.MajorName))"
+        $result.Action = 'skip'; $result.ExitCode = 0; $result.Result = 'os-incompatible'
         return $result
     }
 

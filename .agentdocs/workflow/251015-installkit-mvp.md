@@ -45,6 +45,14 @@
 - [x] 全部脚本语法校验 + 全流程 DryRun 干跑通过（无系统变更）
 - [ ] 目标机实机执行（需用户先将官方网卡驱动放入 `01_Network`）
 
+### 阶段 5：Win10 / Win11 双兼容（已完成）
+
+- [x] `software-manifest.json` 每个条目加 `min_os_version=10.0.19041`（Win10 22H2 起）
+- [x] `Common.ps1` 新增 `Get-KitOsInfo`（统一 OS 版本/名称/Build 字段）与 `Test-KitOsCompatible`；`Install-KitItem` 内置版本判断，不兼容条目跳过并记 WARN
+- [x] `Check-System.ps1` 报告显式标注 Win10/Win11，统计清单中有多少条目因 OS 不兼容被跳过
+- [x] `driver-manifest.json` 模板条目 `supported_os` 改为 Win10 + Win11
+- [x] README 与 task doc 同步更新
+
 ## 三、关键设计约束
 
 - 根目录按标记文件 `config\settings.json` 识别，不写死盘符（见 ADR-001）。

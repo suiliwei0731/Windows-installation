@@ -23,14 +23,10 @@ $component = 'CheckSystem'
 Write-KitLog -Root $Root -Component $component -Message "开始系统环境检查（模拟执行：$isDryRun）。"
 
 # 1. Windows 版本与构建号
-$os = Get-CimInstance -ClassName Win32_OperatingSystem
-$currentVersion = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -ErrorAction SilentlyContinue
-$displayVersion = $currentVersion.DisplayVersion
-$buildNumber = $os.BuildNumber
-$ubr = $currentVersion.UBR
+$osInfo = Get-KitOsInfo
+$osArch = (Get-CimInstance -ClassName Win32_OperatingSystem).OSArchitecture
 
 # 2. 系统架构
-$osArch = $os.OSArchitecture
 $procArch = $env:PROCESSOR_ARCHITECTURE
 $targetArch = $settings.target_arch
 $archMatches = ($targetArch -eq 'x64' -and $osArch -like '*64*')
@@ -45,11 +41,14 @@ $freeGB = [math]::Round($volume.FreeSpace / 1GB, 2)
 $totalGB = [math]::Round($volume.Size / 1GB, 2)
 $spaceOk = $freeGB -ge 5
 
-# 5. 必要安装包（清单中 optional=false 的条目）
-$required = Get-KitManifest -Root $Root -Name 'software' | Where-Object { -not $_.optional }
+# 5. 必要安装包（清单中 optional=false 的条目）+ OS 兼容性预扫
+$allManifest = Get-KitManifest -Root $Root -Name 'software'
+$required = @($allManifest | Where-Object { -not $_.optional })
 $missing = @()
+$osIncompatible = @()
 foreach ($item in $required) {
     $full = Resolve-KitPath -Root $Root -RelativePath $item.local_path
+    if (-not (Test-KitOsCompatible -OsInfo $osInfo -Item $item)) { $osIncompatible += "$($item.id)(需$($item.min_os_version))" }
     if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { $missing += $item.id }
 }
 
@@ -58,15 +57,18 @@ $lines = @(
     "# 系统环境检查报告"
     ""
     "- 生成时间：$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-    "- 操作系统：$($os.Caption)（版本 $displayVersion，构建 $buildNumber.$ubr）"
+    "- 操作系统：$($osInfo.MajorName)（$($osInfo.Version) / DisplayVersion=$($osInfo.DisplayVersion) UBR=$($osInfo.Ubr)）"
     "- 系统架构：$osArch（进程 $procArch，目标 $targetArch，匹配：$archMatches）"
     "- 管理员权限：$isAdmin"
     "- 资源根目录：$Root"
     "- 磁盘空间：${freeGB} GB 可用 / ${totalGB} GB 总计（充足：$spaceOk）"
-    "- 必要安装包缺失：$(if ($missing.Count) { $missing -join ', ' } else { '无' })"
+    "- 清单总数：$($allManifest.Count)；OS 不兼容将被跳过：$($osIncompatible.Count)；必要安装包缺失：$(if ($missing.Count) { $missing -join ', ' } else { '无' })"
 )
 $lines | ForEach-Object { Write-Host $_ }
 
+if ($osIncompatible.Count) {
+    Write-KitLog -Root $Root -Component $component -Level WARN -Message "以下条目因当前系统版本低于 min_os_version 将被跳过：$($osIncompatible -join ', ')"
+}
 if ($missing.Count) {
     Write-KitLog -Root $Root -Component $component -Level WARN -Message "以下必要安装包缺失：$($missing -join ', ')"
 } else {

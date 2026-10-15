@@ -14,7 +14,8 @@
         "install_order":  10,
         "optional":  false,
         "status":  "verified",
-        "note":  "官方来源：https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist 。兼容已装同系列运行库，不先卸载旧版。"
+        "note":  "官方来源：https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist 。兼容已装同系列运行库，不先卸载旧版。",
+        "min_os_version":  "10.0.19041"
     },
     {
         "id":  "vcredist-2015-2022-x86",
@@ -31,7 +32,8 @@
         "install_order":  11,
         "optional":  false,
         "status":  "verified",
-        "note":  "部分 32 位软件仍依赖 x86 运行库，建议一并安装。"
+        "note":  "部分 32 位软件仍依赖 x86 运行库，建议一并安装。",
+        "min_os_version":  "10.0.19041"
     },
     {
         "id":  "directx-jun2010",
@@ -51,7 +53,8 @@
         "install_order":  20,
         "optional":  true,
         "status":  "verified",
-        "note":  "仅用于补齐旧游戏/旧软件的传统 DirectX 辅助组件，不替换系统 DirectX。官方分发文件为自解压程序：先以 /Q /T:{dest} 静默解压到临时目录，再执行其中的 DXSETUP.exe /silent，两步顺序执行。"
+        "note":  "仅用于补齐旧游戏/旧软件的传统 DirectX 辅助组件，不替换系统 DirectX。官方分发文件为自解压程序：先以 /Q /T:{dest} 静默解压到临时目录，再执行其中的 DXSETUP.exe /silent，两步顺序执行。",
+        "min_os_version":  "10.0.19041"
     },
     {
         "id":  "dotnet-desktop-8-x64",
@@ -68,7 +71,8 @@
         "install_order":  30,
         "optional":  true,
         "status":  "verified",
-        "note":  "按实际软件需求选择，不要默认安装所有版本；普通桌面软件无需 SDK。"
+        "note":  "按实际软件需求选择，不要默认安装所有版本；普通桌面软件无需 SDK。",
+        "min_os_version":  "10.0.19041"
     },
     {
         "id":  "7zip-x64",
@@ -85,7 +89,8 @@
         "install_order":  40,
         "optional":  false,
         "status":  "verified",
-        "note":  "官方静默参数为 /S。"
+        "note":  "官方静默参数为 /S。",
+        "min_os_version":  "10.0.19041"
     },
     {
         "id":  "chrome-x64",
@@ -102,7 +107,8 @@
         "install_order":  50,
         "optional":  true,
         "status":  "verified",
-        "note":  "使用企业版 MSI 以获得官方支持的静默安装；不得修改首页与默认搜索引擎。"
+        "note":  "使用企业版 MSI 以获得官方支持的静默安装；不得修改首页与默认搜索引擎。",
+        "min_os_version":  "10.0.19041"
     },
     {
         "id":  "firefox-x64",
@@ -119,7 +125,8 @@
         "install_order":  51,
         "optional":  true,
         "status":  "verified",
-        "note":  "可选浏览器，按需安装。"
+        "note":  "可选浏览器，按需安装。",
+        "min_os_version":  "10.0.19041"
     },
     {
         "id":  "sysinternals-suite",
@@ -136,6 +143,7 @@
         "install_order":  60,
         "optional":  true,
         "status":  "verified",
-        "note":  "解压即用，无安装程序。"
+        "note":  "解压即用，无安装程序。",
+        "min_os_version":  "10.0.19041"
     }
 ]
