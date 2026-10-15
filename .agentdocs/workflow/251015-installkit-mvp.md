@@ -33,6 +33,15 @@
 - [x] 报告与日志模板落地（`06_Scripts/templates`）
 - [ ] 装机验收清单按实际环境逐项核对
 
+### 阶段 4：一键启动器与离线网卡驱动安装（已完成）
+
+- [x] `Start-Setup.bat`（资源库根目录）：UAC 提权 → 资源齐全性检查 → 确认 → 顺序安装
+- [x] `Update-Drivers.ps1` 增加 `-Install`：用系统自带 `pnputil` 安装 `01_Network` 下的 `.inf` 离线网卡驱动
+- [x] `Start-Setup.ps1` 增加 `-InstallDrivers`，保持「前一个装完再装下一个」的顺序执行
+- [x] 修复 DirectX 自解压静默安装：`extract_args`/`inner_exe`/`inner_args`（先解压再执行 `DXSETUP.exe /silent`）
+- [x] 全部脚本语法校验 + 全流程 DryRun 干跑通过（无系统变更）
+- [ ] 目标机实机执行（需用户先将官方网卡驱动放入 `01_Network`）
+
 ## 三、关键设计约束
 
 - 根目录按标记文件 `config\settings.json` 识别，不写死盘符（见 ADR-001）。

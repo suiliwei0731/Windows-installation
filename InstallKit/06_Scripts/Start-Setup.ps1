@@ -2,19 +2,22 @@
 .SYNOPSIS
   InstallKit 统一入口：检查环境、识别根目录、展示待执行项、确认后按顺序执行。
 .DESCRIPTION
-  执行顺序：检查系统 → 检查网络 → 驱动检测 → 安装运行库 → 安装基础工具 → 生成报告。
+  执行顺序：检查系统 → 检查网络 → 驱动检测/离线网卡驱动安装 → 安装运行库 → 安装基础工具 → 生成报告。
+  每一步都等待上一步结束再执行（安装器均以等待模式运行）。
   不默认执行系统重置、磁盘格式化、分区删除、引导修复、驱动强制覆盖或安全设置修改。
   默认模拟执行（DryRun），真正执行需显式 -Execute 且经用户确认。
+  加 -InstallDrivers 时，驱动步骤会用 pnputil 安装 01_Network 下的离线网卡驱动。
 .EXAMPLE
   .\Start-Setup.ps1
-  .\Start-Setup.ps1 -Execute
+  .\Start-Setup.ps1 -Execute -Force -InstallDrivers
 #>
 [CmdletBinding()]
 param(
     [string]$Root,
     [string[]]$Steps,
     [switch]$Execute,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$InstallDrivers
 )
 
 . "$PSScriptRoot\Common.ps1"
@@ -49,6 +52,8 @@ $allSteps = [ordered]@{
     'install-runtimes' = '安装运行库'
     'install-tools'    = '安装基础工具'
 }
+# 指定 -InstallDrivers 时，驱动步骤改为安装 01_Network 下的离线网卡驱动
+if ($InstallDrivers) { $allSteps['update-drivers'] = '安装离线网卡驱动（01_Network，pnputil）' }
 $stepScript = @{
     'check-network'    = 'Check-Network.ps1'
     'update-drivers'   = 'Update-Drivers.ps1'
@@ -81,7 +86,9 @@ foreach ($k in $planKeys) {
     Write-Host ""
     Write-Host "== 执行：$($allSteps[$k]) ==" -ForegroundColor Cyan
     try {
-        & (Join-Path $PSScriptRoot $stepScript[$k]) -Root $Root -DryRun:$isDryRun
+        $stepArgs = @{ Root = $Root; DryRun = $isDryRun }
+        if ($k -eq 'update-drivers' -and $InstallDrivers) { $stepArgs['Install'] = $true }
+        & (Join-Path $PSScriptRoot $stepScript[$k]) @stepArgs
         $results += [pscustomobject]@{ Step = $k; Result = 'done' }
     } catch {
         $results += [pscustomobject]@{ Step = $k; Result = 'error' }

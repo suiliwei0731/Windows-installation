@@ -242,6 +242,52 @@ function Install-KitItem {
         return $result
     }
 
+    # 自解压型安装包（如 DirectX June 2010 运行时）：
+    # 官方分发文件本身是自解压程序，无法直接以静默参数安装，须先静默解压到临时目录，
+    # 再执行目录内的安装程序。两步均使用 -Wait，确保解压完成后再安装。
+    if (-not [string]::IsNullOrWhiteSpace($Item.extract_args)) {
+        $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("InstallKit-{0}" -f $Item.id)
+        # 用引号包裹解压目标目录，避免路径含空格时参数被拆断
+        $extractArgString = $Item.extract_args -replace '\{dest\}', "`"$tempDir`""
+        $innerExe = Join-Path $tempDir $Item.inner_exe
+        $innerArgs = @()
+        if ($Item.inner_args) { $innerArgs = @($Item.inner_args -split '\s+' | Where-Object { $_ }) }
+
+        if ($DryRun) {
+            Write-KitLog -Root $Root -Component $Component -Message ("[模拟] 将执行：{0} {1}，随后执行 {2} {3}" -f $full, $extractArgString, $innerExe, ($innerArgs -join ' '))
+            $result.Action = 'dry-run'; $result.Result = 'simulated'
+            return $result
+        }
+
+        Write-KitLog -Root $Root -Component $Component -Message "开始安装（自解压）：$($Item.name)"
+        $startTime = Get-Date
+        try {
+            New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+            $extractProc = Start-Process -FilePath $full -ArgumentList $extractArgString -Wait -PassThru -ErrorAction Stop
+            if ($extractProc.ExitCode -ne 0) { throw "解压失败，退出码 $($extractProc.ExitCode)" }
+            if (-not (Test-Path -LiteralPath $innerExe)) { throw "解压后未找到内部安装程序：$innerExe" }
+
+            $installProc = Start-Process -FilePath $innerExe -ArgumentList $innerArgs -Wait -PassThru -ErrorAction Stop
+            $code = $installProc.ExitCode
+            $elapsed = [int]((Get-Date) - $startTime).TotalSeconds
+            # 0 成功；3010 成功且需重启；1641 已发起重启
+            if ($code -in 0, 3010, 1641) {
+                $result.Action = 'install'; $result.ExitCode = $code; $result.Result = 'success'
+                if ($code -in 3010, 1641) { $result.RestartRequired = $true }
+                Write-KitLog -Root $Root -Component $Component -Level SUCCESS -Message "安装成功：$($Item.id)，退出码 $code，耗时 ${elapsed}s"
+            } else {
+                $result.Action = 'install'; $result.ExitCode = $code; $result.Result = 'failed'
+                Write-KitLog -Root $Root -Component $Component -Level ERROR -Message "安装失败：$($Item.id)，退出码 $code，耗时 ${elapsed}s"
+            }
+        } catch {
+            $result.Action = 'install'; $result.Result = 'error'
+            Write-KitLog -Root $Root -Component $Component -Level ERROR -Message "安装异常：$($Item.id)，$($_.Exception.Message)"
+        } finally {
+            if (Test-Path -LiteralPath $tempDir) { Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+        return $result
+    }
+
     # 组装安装命令
     $argList = @()
     if ($Item.silent_args) { $argList = @($Item.silent_args -split '\s+' | Where-Object { $_ }) }

@@ -17,6 +17,9 @@
 | local_path | string | 是 | 相对资源根目录的本地安装包路径 |
 | installer_type | string | 是 | `EXE` / `MSI` / `MSU` / `INF` / `ZIP` |
 | silent_args | string | 否 | 经官方文档确认的静默安装参数 |
+| extract_args | string | 否 | 自解压型包（`installer_type=EXE`）的静默解压参数，`{dest}` 为解压目标目录占位符；设置后按“先解压、再执行内部安装程序”的流程处理 |
+| inner_exe | string | 否 | 自解压包解压后内部安装程序文件名（如 `DXSETUP.exe`），与 `extract_args` 配合使用 |
+| inner_args | string | 否 | 内部安装程序的静默参数 |
 | sha256 | string | 否 | 文件校验值（小写十六进制）；未知时留空 |
 | requires_admin | bool | 是 | 是否需要管理员权限 |
 | install_order | int | 是 | 建议安装顺序，升序执行 |

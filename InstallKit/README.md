@@ -43,7 +43,23 @@ InstallKit
 
 ## 三、执行脚本
 
-统一入口（推荐）：
+### 一键启动（bat，推荐）
+
+系统经 PE 安装完成、首次开机后，直接双击资源库根目录下的 `Start-Setup.bat`：
+
+1. 自动请求管理员权限（UAC 提权）；
+2. 只读检查资源是否齐全（缺件会列出，不修改系统）；
+3. 按顺序安装——离线网卡驱动 → 运行库（VC++ x64 → x86 → DirectX → .NET）→ 基础工具；
+   每个安装器均以等待模式运行，前一个结束再执行下一个；
+4. 执行前需输入 `YES` 确认；结束后日志见 `07_Logs`，报告见 `09_Reports`。
+
+> 网卡驱动：请按目标机硬件型号，把厂商官方 `.inf` 驱动放入 `01_Network`（有线放 `Ethernet`，无线放 `WiFi`）。
+> `01_Network` 为空时该步骤会提示“未找到驱动”，其余步骤照常执行。
+> `Start-Setup.bat` 内部复用 `06_Scripts\Start-Setup.ps1`，无需手工敲命令。
+
+### 命令行入口（进阶）
+
+统一入口：
 
 ```powershell
 # 模拟执行全部步骤并生成计划
@@ -51,6 +67,9 @@ InstallKit
 
 # 真实执行（需管理员 + 输入 YES 确认；settings 中 dry_run_default=true 时需再加 -Force）
 .\06_Scripts\Start-Setup.ps1 -Execute -Force
+
+# 真实执行并安装 01_Network 下的离线网卡驱动（pnputil）
+.\06_Scripts\Start-Setup.ps1 -Execute -Force -InstallDrivers
 ```
 
 单步执行：
@@ -59,6 +78,7 @@ InstallKit
 .\06_Scripts\Check-System.ps1                              # 系统环境检查
 .\06_Scripts\Check-Network.ps1                             # 网络检查
 .\06_Scripts\Update-Drivers.ps1                            # 驱动检测（不覆盖）
+.\06_Scripts\Update-Drivers.ps1 -Install                   # 检测并安装 01_Network 离线网卡驱动
 .\06_Scripts\Install-Runtimes.ps1                          # 运行库（默认模拟）
 .\06_Scripts\Install-Runtimes.ps1 -DryRun:$false           # 真实安装运行库
 .\06_Scripts\Install-Tools.ps1 -Id 7zip-x64 -Retry         # 单项安装并重试

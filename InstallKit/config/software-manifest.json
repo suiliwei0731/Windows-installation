@@ -43,12 +43,15 @@
         "local_path":  "03_Runtime/DirectX/directx_Jun2010_redist.exe",
         "installer_type":  "EXE",
         "silent_args":  "",
+        "extract_args":  "/Q /T:{dest}",
+        "inner_exe":  "DXSETUP.exe",
+        "inner_args":  "/silent",
         "sha256":  "053f76dcbb28802e23341b6a787e3b0791c0fa5c8d4d011b1044172dbf89c73b",
         "requires_admin":  true,
         "install_order":  20,
         "optional":  true,
         "status":  "verified",
-        "note":  "仅用于补齐旧游戏/旧软件的传统 DirectX 辅助组件，不替换系统 DirectX。官方未提供单一静默参数，需解压后单独执行 dxsetup，安装前须人工确认参数。"
+        "note":  "仅用于补齐旧游戏/旧软件的传统 DirectX 辅助组件，不替换系统 DirectX。官方分发文件为自解压程序：先以 /Q /T:{dest} 静默解压到临时目录，再执行其中的 DXSETUP.exe /silent，两步顺序执行。"
     },
     {
         "id":  "dotnet-desktop-8-x64",

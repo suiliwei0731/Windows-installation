@@ -1,20 +1,24 @@
 ﻿<#
 .SYNOPSIS
-  检测、匹配与整理适用驱动，默认不强制覆盖当前正常驱动。
+  检测、匹配适用驱动；默认仅检测，指定 -Install 时安装 01_Network 下的离线网卡驱动。
 .DESCRIPTION
-  只做检测与整理，不安装、不覆盖任何现有驱动：
+  默认只做检测与整理，不安装、不覆盖任何现有驱动：
     - 获取硬件设备信息与未知/异常设备；
     - 按厂商、型号与硬件 ID 匹配 driver-manifest.json；
     - 校验本地驱动包签名；
     - 对存储控制器等高风险驱动给出明确警告。
+  指定 -Install 时，额外使用系统自带的 pnputil 安装 01_Network 下的 .inf 离线网卡驱动
+  （仅限网络类低风险驱动；02_Drivers 下的高风险驱动仍不自动安装，需人工在设备管理器处理）。
 .EXAMPLE
   .\Update-Drivers.ps1
-  .\Update-Drivers.ps1 -Root "E:\InstallKit" -DryRun:$false
+  .\Update-Drivers.ps1 -Install
+  .\Update-Drivers.ps1 -Install -DryRun:$false
 #>
 [CmdletBinding()]
 param(
     [string]$Root,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$Install
 )
 
 . "$PSScriptRoot\Common.ps1"
@@ -93,19 +97,67 @@ if ($highRisk.Count) {
     Write-KitLog -Root $Root -Component $component -Level WARN -Message "存在 $($highRisk.Count) 个高风险驱动条目，已提示用户，未执行任何覆盖。"
 }
 
-Write-KitLog -Root $Root -Component $component -Message "驱动检测完成：本脚本不覆盖现有驱动；如需安装请通过设备管理器或厂商工具手动执行。"
+# 5. 安装离线网卡驱动（仅在指定 -Install 时；使用系统自带 pnputil）
+$driverResults = @()
+if ($Install) {
+    Write-Host ""
+    Write-Host "== 安装离线网卡驱动（01_Network）==" -ForegroundColor Cyan
+    $netRoot = Join-Path $Root '01_Network'
+    $infFiles = @(Get-ChildItem -Path $netRoot -Recurse -File -Filter '*.inf' -ErrorAction SilentlyContinue)
+    if (-not $infFiles.Count) {
+        Write-KitLog -Root $Root -Component $component -Level WARN -Message "01_Network 下未发现 .inf 驱动文件，无法安装网卡驱动；请按硬件型号补充官方驱动后重试。"
+        Write-Host "未在 01_Network 找到 .inf 驱动，跳过。请按硬件型号下载官方网卡驱动后重试。" -ForegroundColor Yellow
+    } else {
+        foreach ($inf in $infFiles) {
+            if ($isDryRun) {
+                Write-KitLog -Root $Root -Component $component -Message "[模拟] 将执行：pnputil /add-driver `"$($inf.FullName)`" /install"
+                $driverResults += [pscustomobject]@{ Inf = $inf.Name; Result = 'simulated' }
+                continue
+            }
+            try {
+                # pnputil 为 Windows 自带官方命令；顺序安装，前一个结束再处理下一个
+                $proc = Start-Process -FilePath 'pnputil.exe' -ArgumentList @('/add-driver', "`"$($inf.FullName)`"", '/install') -Wait -PassThru -ErrorAction Stop
+                if ($proc.ExitCode -in 0, 3010) {
+                    Write-KitLog -Root $Root -Component $component -Level SUCCESS -Message "网卡驱动安装成功：$($inf.Name)，退出码 $($proc.ExitCode)"
+                    $driverResults += [pscustomobject]@{ Inf = $inf.Name; Result = 'success' }
+                } else {
+                    Write-KitLog -Root $Root -Component $component -Level ERROR -Message "网卡驱动安装失败：$($inf.Name)，退出码 $($proc.ExitCode)"
+                    $driverResults += [pscustomobject]@{ Inf = $inf.Name; Result = 'failed' }
+                }
+            } catch {
+                Write-KitLog -Root $Root -Component $component -Level ERROR -Message "网卡驱动安装异常：$($inf.Name)，$($_.Exception.Message)"
+                $driverResults += [pscustomobject]@{ Inf = $inf.Name; Result = 'error' }
+            }
+        }
+    }
+}
+
+if ($Install) {
+    Write-KitLog -Root $Root -Component $component -Message "驱动处理完成：已尝试安装 01_Network 下的离线网卡驱动；02_Drivers 下的高风险驱动仍不自动安装。"
+} else {
+    Write-KitLog -Root $Root -Component $component -Message "驱动检测完成：未覆盖现有驱动；如需安装离线网卡驱动可加 -Install 参数。"
+}
 
 $reportLines = @(
     "# 驱动检测报告"
     ""
     "- 生成时间：$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
     "- 异常/未知设备：$($problemDevices.Count) 个"
-    "- 说明：本脚本仅检测与整理，默认不覆盖当前正常驱动。"
+    "- 说明：默认仅检测与整理，不覆盖当前正常驱动。"
+    "- 网卡驱动安装：$(if ($Install) { '已尝试（01_Network）' } else { '未执行（默认仅检测）' })"
     ""
     "| ID | 名称 | 设备类型 | 匹配设备 | 包就位 | 签名 | 风险 |"
     "| --- | --- | --- | --- | --- | --- | --- |"
 )
 foreach ($m in $matched) { $reportLines += "| $($m.Id) | $($m.Name) | $($m.DeviceType) | $($m.MatchedDevice) | $($m.PackageExists) | $($m.Signature) | $($m.RiskLevel) |" }
+if ($driverResults.Count) {
+    $reportLines += ""
+    $reportLines += "## 离线网卡驱动安装结果"
+    $reportLines += ""
+    $reportLines += "| INF | 结果 |"
+    $reportLines += "| --- | --- |"
+    foreach ($dr in $driverResults) { $reportLines += "| $($dr.Inf) | $($dr.Result) |" }
+}
 
 if (-not $isDryRun) {
     $reportPath = Join-Path $Root ("09_Reports\driver-detect-{0}.md" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
