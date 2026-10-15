@@ -19,6 +19,9 @@ InstallKit
 ├── 02_Drivers                  芯片组/显卡/声卡/存储等驱动
 ├── 03_Runtime                  Visual C++ / DirectX / .NET 运行库
 ├── 04_Tools                    解压、浏览器、终端、诊断工具
+│   └── Diagnostics
+│       ├── SysinternalsSuite.zip        官方 Sysinternals（装机后自动解压到同级同名目录）
+│       └── KeyboardMouseTest\           键盘 / 鼠标 硬件测试（纯 HTML，双击 index.html 或 bat 启动）
 ├── 05_Applications             其他应用
 ├── 06_Scripts                  全部 PowerShell 脚本与报告模板
 ├── 07_Logs                     运行日志
