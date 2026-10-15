@@ -10,26 +10,28 @@
 
 ## 二、阶段与 TODO
 
-### 阶段 1：资源库骨架与清单（进行中）
+### 阶段 1：资源库骨架与清单（已完成）
 
-- [ ] 建立 `InstallKit` 目录结构与 `config` 子目录
-- [ ] 将两个 Windows ISO 归档至 `00_System\WindowsISO`
-- [ ] 生成 `software-manifest.json`、`driver-manifest.json`、`settings.json` 示例
-- [ ] 编写 `Check-System.ps1`、`Check-Network.ps1`（纯检测，无系统修改）
-- [ ] 编写资源准备脚本：建目录、扫描安装包、计算 SHA-256、写日志
-- [ ] 输出第一阶段「模拟执行」结果供用户确认
+- [x] 建立 `InstallKit` 目录结构与 `config` 子目录
+- [x] 将两个 Windows ISO 归档至 `00_System\WindowsISO`
+- [x] 生成 `software-manifest.json`、`driver-manifest.json`、`settings.json` 示例
+- [x] 编写 `Check-System.ps1`、`Check-Network.ps1`（纯检测，无系统修改）
+- [x] 编写 `Initialize-InstallKit.ps1`：建目录、扫描安装包、计算 SHA-256、回写清单、写日志
+- [x] 输出第一阶段「模拟执行」结果并留存日志
 
-### 阶段 2：运行库与工具安装（未开始）
+### 阶段 2：运行库与工具安装（脚本已就绪，真实安装待确认）
 
-- [ ] `Install-Runtimes.ps1`：按清单安装 VC++、DirectX 旧组件、指定 .NET Runtime
-- [ ] `Install-Tools.ps1`：安装解压工具、浏览器等基础软件
-- [ ] 两脚本均默认 `-DryRun`，校验 SHA-256，记录退出码与重启提示
+- [x] `Install-Runtimes.ps1`：按清单安装 VC++、DirectX 旧组件、指定 .NET Runtime
+- [x] `Install-Tools.ps1`：安装解压工具、浏览器等基础软件（支持 `-Id` 单项与 `-Retry`）
+- [x] 两脚本均默认 `-DryRun`，校验 SHA-256，记录退出码与重启提示
+- [ ] 用户确认后执行真实安装并归档报告
 
-### 阶段 3：驱动与环境初始化（未开始）
+### 阶段 3：驱动与环境初始化（脚本已就绪，真实执行待确认）
 
-- [ ] `Update-Drivers.ps1`：检测、匹配硬件 ID、下载并整理适用驱动，默认不覆盖
-- [ ] `Start-Setup.ps1`：统一入口，环境检查 → 权限检查 → 识别根目录 → 展示项 → 确认 → 顺序执行 → 出报告
-- [ ] 装机验收清单与报告模板落地
+- [x] `Update-Drivers.ps1`：检测、匹配硬件、校验签名、提示高风险，默认不覆盖
+- [x] `Start-Setup.ps1`：统一入口，环境检查 → 权限检查 → 识别根目录 → 展示项 → 确认 → 顺序执行 → 出报告
+- [x] 报告与日志模板落地（`06_Scripts/templates`）
+- [ ] 装机验收清单按实际环境逐项核对
 
 ## 三、关键设计约束
 
